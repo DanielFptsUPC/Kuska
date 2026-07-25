@@ -19,6 +19,10 @@ Kuska recibe fotos/video/texto/GPS de un reporte ciudadano post-sismo, el backen
 | Dashboard | **Next.js + React** | Deploy gratis e instantáneo en Vercel, requisito del hackathon es demo pública sin login. |
 | Mapa | **Leaflet** (react-leaflet) con OpenStreetMap | Gratis, sin API key, suficiente para un mapa de pines con prioridad por color. |
 
+### Nota sobre iPhones en el equipo
+
+El Alcance excluye explícitamente "Aplicación para iOS" como *entregable* (no van a publicar en App Store ni certificar esa versión). Eso **no** les impide desarrollar y probar con iPhone: la app **Expo Go** existe también para iOS (App Store), y con el managed workflow de Expo el mismo código corre igual en Android y iPhone durante el desarrollo — no hace falta Mac ni Xcode para nada de esto. Si dos del equipo tienen iPhone, usan Expo Go en su iPhone sin problema para programar y probar; simplemente el foco del entregable/demo final queda en que funcione (aunque en la práctica funcionará en ambos).
+
 ## Contrato de API (el mismo que usa el equipo de backend)
 
 ```
@@ -88,18 +92,19 @@ Mientras el backend no esté listo, **no esperen** — mockeen estas respuestas 
    ```
 3. Cuenta en **Vercel** (vercel.com, login con GitHub) para deployar con un click y tener URL pública — requisito del hackathon.
 
-## Ritmo sugerido (alineado al cronograma del evento)
+## Fases (mismo esquema que usa el equipo backend — ver [BACKEND.md](./BACKEND.md))
 
-- **08:30–09:00** — Kickoff: cerrar el contrato de API con backend, `npx create-expo-app` y `npx create-next-app` ya corriendo, celulares con Expo Go instalado.
-- **09:00–11:00** — UI base con datos mockeados: pantalla de captura (móvil) y mapa+lista (dashboard).
-- **11:00–13:00** — Conectar a backend real (`POST /incidents`, `GET /incidents`).
-- **13:00–14:30** — Offline-first real en móvil (cola local + sync); dashboard con vista de detalle completa.
-- **14:30–15:30** — Pulido visual, manejo de estados de carga/error, probar el flujo completo dos veces.
-- **15:30–16:15** — Deploy final del dashboard a Vercel (URL pública, sin login), grabar video de respaldo de la app móvil funcionando.
-- **16:15–16:30** — Buffer. Confirmar que los links del Writeup de Kaggle funcionan sin login antes de las 16:30.
+Trabajamos por **fases con criterio de salida**, no por bloques de reloj rígidos: si una fase se atrasa, se recorta alcance de esa fase, no se corre todo el cronograma. Las horas son referencia, no un límite duro.
+
+- **Fase 0 — Setup** (~08:30–09:00): contrato de API cerrado con backend, `npx create-expo-app` y `npx create-next-app` corriendo, celulares (Android o iPhone) con Expo Go instalado y mostrando el QR de arranque. *Salida: ambos proyectos corren localmente sin errores.*
+- **Fase 1 — UI con mocks** (~09:00–11:00): pantalla de captura (móvil) y mapa+lista (dashboard) construidos contra datos falsos, sin depender de que backend ya esté listo. *Salida: se puede navegar el flujo completo con datos de mentira.*
+- **Fase 2 — Integración real**: conectar a `POST /incidents` y `GET /incidents` reales, apenas backend los tenga corriendo (local o deployado).
+- **Fase 3 — Offline-first real**: cola local en el móvil + sync automático al recuperar conexión; dashboard con vista de detalle completa (`gemma_result`).
+- **Fase 4 — Pulido y deploy**: manejo de estados de carga/error, deploy del dashboard a Vercel (URL pública sin login), probar el flujo completo dos veces.
+- **Fase 5 — Cierre**: grabar video de respaldo de la app móvil funcionando, confirmar que los links del Writeup de Kaggle funcionan sin login, antes de las 16:30.
 
 ## Notas de negocio a no perder de vista
 
 - **Offline-first no es opcional** — es uno de los 6 puntos del "resultado esperado" del proyecto: debe poder registrar un incidente sin conexión y sincronizar después.
 - No hay que construir autenticación compleja (fuera de alcance).
-- Solo Android — iOS está fuera de alcance, no pierdan tiempo ahí.
+- El entregable apunta a Android, pero desarrollar/probar en iPhone con Expo Go funciona igual — ver la nota de plataforma arriba.

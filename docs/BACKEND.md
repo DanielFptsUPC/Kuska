@@ -21,8 +21,22 @@ Trabajen sobre ramas propias y mergeen seguido a `main` (o a una rama `dev` comp
 | Modelo | **Gemma 4 vía Google AI Studio (Gemini API)** | Inferencia en la nube, sin GPU local, tier gratuito generoso, multimodal (imagen+video+texto) en una sola llamada. |
 | DB + Storage | **Supabase** (Postgres + Storage) | Setup en minutos, sin backend de auth que construir (no se pide auth compleja), soporta geodata y guardar fotos/video directo. |
 | Deploy | **Railway o Render (free tier)** | URL pública estable para que el móvil y el dashboard no dependan del wifi del local. |
+| Docs de API | **Swagger UI integrado de FastAPI** (`/docs`) | Se genera solo, sin escribir nada extra — permite probar cada endpoint (incluyendo subida de fotos multipart) desde el navegador. |
 
-Si el equipo ya domina Node más que Python, Express+TypeScript también funciona — el contrato de API de abajo es lo único que de verdad tiene que respetarse.
+### Python + FastAPI vs. Java + Spring Boot — decisión
+
+Para este sprint, **Python + FastAPI**, no Spring Boot. Razones concretas:
+
+- **Setup**: FastAPI son minutos (`pip install`, un archivo `main.py`). Spring Boot implica JDK, Maven/Gradle, estructura de proyecto más pesada — tiempo que hoy no sobra.
+- **Swagger gratis**: FastAPI genera la documentación interactiva (OpenAPI/Swagger) automáticamente a partir del código, sin dependencias extra. En Spring Boot hay que agregar y configurar `springdoc-openapi` a mano para tener lo mismo.
+- **Gemma/Gemini SDK**: los ejemplos oficiales del Gemma Cookbook y del SDK de Google AI Studio están en Python — menos traducción, menos riesgo al integrar la parte más nueva del proyecto.
+- Spring Boot gana en robustez/tipado para sistemas grandes de producción, pero eso no es lo que se juzga hoy — la rúbrica pesa funcionalidad y demo, no arquitectura enterprise.
+
+Si alguien del equipo ya domina Node más que Python, Express+TypeScript es la única alternativa razonable (misma lógica: setup rápido) — Spring Boot no, salvo que ya tengan mucha experiencia previa con él específicamente.
+
+### Swagger vs. Postman
+
+No necesitan instalar ni configurar Swagger aparte: al correr FastAPI, entrando a `http://localhost:8000/docs` ya tienen una UI interactiva con todos los endpoints, incluida la subida de archivos (fotos/video) por multipart. Eso cubre el testing manual del día a día. Postman/Thunder Client solo suma valor si quieren **guardar una colección de requests reutilizable** para compartir con frontend (por ejemplo, para que el equipo de dashboard pruebe `GET /incidents` sin escribir código) — es un nice-to-have, no algo que tengan que montar hoy si el tiempo aprieta.
 
 ## Contrato de API (acordar esto en los primeros 30 minutos)
 
@@ -78,6 +92,10 @@ Descripción del ciudadano: "{description}"
 
 Prueben esto aislado (script suelto o Google AI Studio / Colab) en la **primera hora** — es la pieza más nueva y riesgosa, y si el formato de salida falla, afecta a los 4.
 
+### Sobre "agentes multimodales" de detección de imágenes
+
+Si alguien les recomendó instalar un "agente multimodal que detecta imágenes" aparte: **no hace falta para el MVP**. Gemma 4 ya es multimodal — recibe la(s) foto(s)/video directamente en la misma llamada de la API junto con el texto, y devuelve la clasificación en un solo paso (el prompt de arriba). Un "agente" (framework con function calling / tool use que decide cuándo invocar qué) es una capa extra por encima de eso, pensada para flujos donde el modelo decide autónomamente qué herramientas llamar — útil recién si van a ir por el reconocimiento especial de **Autonomous Agent Excellence**, y solo como mejora *después* de tener el flujo básico (foto → Gemma → clasificación → guardado) funcionando de punta a punta. No instalen nada nuevo para esto todavía; primero validen la llamada directa a Gemma.
+
 ## Checklist de instalación (Backend A / Andrés)
 
 1. **Cuenta Google AI Studio** → https://aistudio.google.com → generar API key para Gemini/Gemma. Probar con un `curl` simple antes de escribir código.
@@ -94,18 +112,19 @@ Prueben esto aislado (script suelto o Google AI Studio / Colab) en la **primera 
 7. **ngrok** (opcional pero recomendado) → https://ngrok.com → para exponer tu backend local (`ngrok http 8000`) y que el celular con Expo Go pueda pegarle sin estar en la misma red. Alternativa: deployar temprano a Railway/Render y trabajar siempre contra esa URL.
 8. **No necesitas** Android Studio, Xcode ni Docker para esta parte — son cosas de frontend/mobile o de infra que no aportan velocidad hoy.
 
-## Ritmo sugerido (alineado al cronograma del evento)
+## Fases (mismo esquema que usa el equipo frontend — ver [FRONTEND.md](./FRONTEND.md))
 
-- **08:30–09:00** — Kickoff: cerrar el contrato de API de arriba con el equipo, crear proyecto Supabase, conseguir API key de Gemini, scaffold FastAPI vacío con los endpoints como stubs.
-- **09:00–11:00** — Backend A: probar Gemma multimodal aislado + prompt. Backend B: schema de DB + endpoint `/sync/batch` con datos mock.
-- **11:00–13:00** — Integración real: `/incidents` end-to-end con una foto de prueba, clasificación real de Gemma guardada en DB.
-- **13:00–14:30** — Offline/sync robusto (idempotencia, reintentos), endpoint `/incidents/{id}` completo para el dashboard.
-- **14:30–15:30** — Deploy a Railway/Render, pulir manejo de errores, datos de demo sembrados.
-- **15:30–16:15** — Escribir el Writeup de Kaggle (arquitectura + uso de Gemma), verificar que el repo sea público, subir todo.
-- **16:15–16:30** — Buffer. Enviar antes de las 16:30, no al filo.
+Trabajamos por **fases con criterio de salida**, no por bloques de reloj rígidos: si una fase se atrasa, se recorta alcance de esa fase, no se corre todo el cronograma. Las horas son referencia, no un límite duro.
+
+- **Fase 0 — Setup** (~08:30–09:00): contrato de API cerrado con el equipo, proyecto Supabase creado, API key de Gemini obtenida y probada con un `curl`/request suelto, scaffold FastAPI corriendo con los endpoints como stubs devolviendo mocks. *Salida: `GET /docs` de Swagger abre y muestra los 4 endpoints.*
+- **Fase 1 — Núcleo aislado** (~09:00–11:00): Backend A prueba Gemma multimodal fuera del API (script/Colab) hasta que el JSON de salida sea confiable. Backend B arma el schema de DB y `/sync/batch` contra datos mock. *Salida: una foto de prueba produce un JSON de clasificación válido, y `/sync/batch` guarda en Supabase.*
+- **Fase 2 — Integración real**: `/incidents` funcionando de punta a punta (foto real → Gemma real → guardado en DB), conectado con lo que frontend ya tiene mockeado.
+- **Fase 3 — Offline/Sync robusto**: idempotencia por `client_id`, reintentos, `/incidents/{id}` completo con el bloque `gemma_result` para el dashboard.
+- **Fase 4 — Deploy y pulido**: deploy a Railway/Render, manejo de errores, datos de demo sembrados.
+- **Fase 5 — Cierre**: Writeup de Kaggle, repo público, verificación final, envío antes de las 16:30 (con buffer, no al filo).
 
 ## Notas de negocio a no perder de vista
 
 - Los resultados de Gemma son **apoyo**, no verdad absoluta — no hace falta lógica de "certeza garantizada".
 - No hay que construir autenticación compleja (está explícitamente fuera de alcance).
-- iOS está fuera de alcance — no pierdan tiempo validando ese caso.
+- La app entregable apunta a Android, pero el **desarrollo** funciona igual en cualquier celular (Android o iPhone) gracias a Expo Go — ver la nota de plataforma en [FRONTEND.md](./FRONTEND.md). No es un bloqueante para nadie del equipo.

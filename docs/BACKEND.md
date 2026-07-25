@@ -123,13 +123,13 @@ Si alguien les recomendó instalar un "agente multimodal que detecta imágenes" 
 2. **Python 3.11+** — verificar con `python --version`. Si no está: instalar desde python.org (marcar "Add to PATH").
 3. **VS Code** — ya lo tienes. Instalar extensión "Python" y "Thunder Client" (cliente REST integrado, evita instalar Postman aparte).
 4. **Git** — usar las ramas `andre` y `daniel` según la responsabilidad asignada.
-5. Crear entorno virtual y proyecto FastAPI:
+5. Crear entorno virtual e instalar dependencias (el proyecto FastAPI ya está en la raíz del repo, ver [README.md](../README.md)):
    ```bash
    python -m venv venv
-   venv\Scripts\activate
-   pip install fastapi uvicorn python-multipart google-genai supabase
+   venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
    ```
-6. **Cuenta Supabase** → https://supabase.com → crear proyecto → copiar `URL` y `anon/service key` → crear bucket de Storage para fotos/video.
+6. **Cuenta Supabase** → https://supabase.com → crear proyecto → en Settings → **Data API** copiar el `Project URL`, y en Settings → **API Keys** copiar la **Secret key** (`sb_secret_...`, no la Publishable) → crear un bucket de Storage llamado `incident-media` (público) para fotos/video. Poner ambos valores en tu `.env` (nunca en `.env.example`, ese solo lleva placeholders).
 7. **ngrok** (opcional pero recomendado) → https://ngrok.com → para exponer tu backend local (`ngrok http 8000`) y que el celular con Expo Go pueda pegarle sin estar en la misma red. Alternativa: deployar temprano a Railway/Render y trabajar siempre contra esa URL.
 8. **No necesitas** Android Studio, Xcode ni Docker para esta parte — son cosas de frontend/mobile o de infra que no aportan velocidad hoy.
 

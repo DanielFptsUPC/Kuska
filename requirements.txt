@@ -1,0 +1,6 @@
+fastapi==0.115.6
+uvicorn[standard]
+python-multipart
+google-genai
+supabase
+python-dotenv

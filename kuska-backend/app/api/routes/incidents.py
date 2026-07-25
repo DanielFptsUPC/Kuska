@@ -67,14 +67,18 @@ async def create_incident(
     repository: Repository,
     analyzer: Analyzer,
     storage: Storage,
-    photos: Annotated[list[UploadFile], File(alias="photos[]")],
+    photos: Annotated[list[UploadFile], File()],
     description: Annotated[str, Form(min_length=10, max_length=2_000)],
     lat: Annotated[float, Form(ge=-90, le=90)],
     lon: Annotated[float, Form(ge=-180, le=180)],
     client_id: Annotated[UUID, Form()],
     created_at_client: Annotated[datetime, Form()],
-    video: Annotated[UploadFile | None, File()] = None,
+    video: Annotated[UploadFile | str | None, File()] = None,
 ) -> IncidentAccepted:
+    # Swagger UI envia "" cuando queda marcado "Send empty value" en un archivo
+    # opcional; sin esto la subida desde /docs falla con 422.
+    if isinstance(video, str):
+        video = None
     if not photos:
         raise HTTPException(status_code=422, detail="Se requiere al menos una fotografía")
     if len(photos) > 5:

@@ -1,6 +1,6 @@
 # Kuska — Guía Backend (Hackathon "Build with Gemma" — GDG Callao)
 
-> Dale este archivo completo a tu asistente de IA (Claude, opencode, etc.) como contexto de arranque. El alcance funcional completo está en [`ALCANCE.md`](./ALCANCE.md) — léelo primero si necesitas más detalle de negocio.
+> Este documento es la guía de trabajo del equipo backend y contiene el alcance necesario para comenzar la implementación.
 
 ## Contexto en una frase
 
@@ -8,10 +8,31 @@ Kuska recibe fotos/video/texto/GPS de un reporte ciudadano post-sismo, se lo pas
 
 ## Equipo backend (2 personas)
 
-- **Backend A — Gemma & Priorización** (Andrés, rama `andres`): integración con Gemma 4, prompt engineering para clasificación estructurada, motor de priorización, endpoint de detalle de incidente.
-- **Backend B — Datos & Sincronización**: modelo de datos, storage de fotos/video, endpoint de ingesta/sync offline, deploy.
+- **Andre — IA, clasificación y procesamiento** (rama `andre`): integración con Gemma, prompt de clasificación estructurada, validación del JSON generado, cálculo de prioridad y servicio de procesamiento de incidentes.
+- **Daniel — API, datos, sincronización y despliegue** (rama `daniel`): proyecto FastAPI, modelo de datos, Supabase/PostgreSQL, almacenamiento de evidencia, endpoints de ingesta y consulta, idempotencia por `client_id`, manejo de errores y deploy.
 
-Trabajen sobre ramas propias y mergeen seguido a `main` (o a una rama `dev` compartida) para no bloquearse — con 4 personas y 8 horas, conflictos de integración tardíos son el mayor riesgo.
+### División detallada
+
+| Persona | Entregables principales | Criterio de terminado |
+|---|---|---|
+| Andre | Módulo cliente de Gemma, prompt versionado, esquema de respuesta, parser/validador, función de prioridad y casos de prueba con imágenes | Una función recibe evidencia y descripción y devuelve un `gemma_result` válido o un error controlado, sin depender de los endpoints HTTP |
+| Daniel | Scaffold FastAPI, configuración y migración de datos, Storage, `POST /incidents`, `GET /incidents`, `GET /incidents/{id}`, sincronización idempotente, CORS, documentación Swagger y URL desplegada | Los endpoints funcionan primero con un procesador simulado y después aceptan el módulo real de Andre sin cambiar el contrato público |
+
+### Punto de integración entre Daniel y Andre
+
+Andre entregará a Daniel una función con una interfaz estable equivalente a:
+
+```python
+async def analyze_incident(
+    media_paths: list[str],
+    description: str,
+) -> GemmaResult:
+    ...
+```
+
+Daniel será responsable de invocarla después de guardar el reporte original y de persistir su resultado. Andre no modificará rutas, base de datos ni despliegue; Daniel no modificará prompts ni reglas internas de clasificación. Ambos acuerdan al inicio el esquema `GemmaResult` y usan ejemplos compartidos para probarlo.
+
+Trabajen sobre ramas propias y hagan integraciones pequeñas y frecuentes a `main` o a una rama `dev` compartida. Eviten editar simultáneamente el mismo archivo: Daniel mantiene las rutas y configuración; Andre mantiene el módulo `services/gemma` y sus pruebas.
 
 ## Stack recomendado
 
@@ -96,12 +117,12 @@ Prueben esto aislado (script suelto o Google AI Studio / Colab) en la **primera 
 
 Si alguien les recomendó instalar un "agente multimodal que detecta imágenes" aparte: **no hace falta para el MVP**. Gemma 4 ya es multimodal — recibe la(s) foto(s)/video directamente en la misma llamada de la API junto con el texto, y devuelve la clasificación en un solo paso (el prompt de arriba). Un "agente" (framework con function calling / tool use que decide cuándo invocar qué) es una capa extra por encima de eso, pensada para flujos donde el modelo decide autónomamente qué herramientas llamar — útil recién si van a ir por el reconocimiento especial de **Autonomous Agent Excellence**, y solo como mejora *después* de tener el flujo básico (foto → Gemma → clasificación → guardado) funcionando de punta a punta. No instalen nada nuevo para esto todavía; primero validen la llamada directa a Gemma.
 
-## Checklist de instalación (Backend A / Andrés)
+## Checklist de instalación del backend
 
 1. **Cuenta Google AI Studio** → https://aistudio.google.com → generar API key para Gemini/Gemma. Probar con un `curl` simple antes de escribir código.
 2. **Python 3.11+** — verificar con `python --version`. Si no está: instalar desde python.org (marcar "Add to PATH").
 3. **VS Code** — ya lo tienes. Instalar extensión "Python" y "Thunder Client" (cliente REST integrado, evita instalar Postman aparte).
-4. **Git** — ya lo tienes (repo `Kuska`, rama `andres`).
+4. **Git** — usar las ramas `andre` y `daniel` según la responsabilidad asignada.
 5. Crear entorno virtual y proyecto FastAPI:
    ```bash
    python -m venv venv
@@ -116,12 +137,12 @@ Si alguien les recomendó instalar un "agente multimodal que detecta imágenes" 
 
 Trabajamos por **fases con criterio de salida**, no por bloques de reloj rígidos: si una fase se atrasa, se recorta alcance de esa fase, no se corre todo el cronograma. Las horas son referencia, no un límite duro.
 
-- **Fase 0 — Setup** (~08:30–09:00): contrato de API cerrado con el equipo, proyecto Supabase creado, API key de Gemini obtenida y probada con un `curl`/request suelto, scaffold FastAPI corriendo con los endpoints como stubs devolviendo mocks. *Salida: `GET /docs` de Swagger abre y muestra los 4 endpoints.*
-- **Fase 1 — Núcleo aislado** (~09:00–11:00): Backend A prueba Gemma multimodal fuera del API (script/Colab) hasta que el JSON de salida sea confiable. Backend B arma el schema de DB y `/sync/batch` contra datos mock. *Salida: una foto de prueba produce un JSON de clasificación válido, y `/sync/batch` guarda en Supabase.*
-- **Fase 2 — Integración real**: `/incidents` funcionando de punta a punta (foto real → Gemma real → guardado en DB), conectado con lo que frontend ya tiene mockeado.
-- **Fase 3 — Offline/Sync robusto**: idempotencia por `client_id`, reintentos, `/incidents/{id}` completo con el bloque `gemma_result` para el dashboard.
-- **Fase 4 — Deploy y pulido**: deploy a Railway/Render, manejo de errores, datos de demo sembrados.
-- **Fase 5 — Cierre**: Writeup de Kaggle, repo público, verificación final, envío antes de las 16:30 (con buffer, no al filo).
+- **Etapa 1 — Setup** (~08:30–09:00): contrato de API cerrado con el equipo, proyecto Supabase creado, API key de Gemini obtenida y probada con un `curl`/request suelto, scaffold FastAPI corriendo con los endpoints como stubs devolviendo mocks. *Salida: `GET /docs` de Swagger abre y muestra los 4 endpoints.*
+- **Etapa 2 — Núcleo aislado** (~09:00–11:00): Andre prueba Gemma multimodal fuera del API hasta que el JSON de salida sea confiable. Daniel arma el esquema de datos y `/sync/batch` contra un procesador simulado. *Salida: una foto de prueba produce un JSON de clasificación válido, y `/sync/batch` guarda en Supabase.*
+- **Etapa 3 — Integración real**: `/incidents` funcionando de punta a punta (foto real → Gemma real → guardado en DB), conectado con lo que frontend ya tiene mockeado.
+- **Etapa 4 — Offline/Sync robusto**: idempotencia por `client_id`, reintentos, `/incidents/{id}` completo con el bloque `gemma_result` para el dashboard.
+- **Etapa 5 — Deploy y pulido**: deploy a Railway/Render, manejo de errores, datos de demo sembrados.
+- **Etapa 6 — Cierre**: Writeup de Kaggle, repo público, verificación final, envío antes de las 16:30 (con buffer, no al filo).
 
 ## Notas de negocio a no perder de vista
 

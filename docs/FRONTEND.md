@@ -1,6 +1,6 @@
 # Kuska — Guía Frontend (Hackathon "Build with Gemma" — GDG Callao)
 
-> Dale este archivo completo a tu asistente de IA (Claude, opencode, etc.) como contexto de arranque. El alcance funcional completo está en [`ALCANCE.md`](./ALCANCE.md) — léelo primero si necesitas más detalle de negocio.
+> Este documento es la guía de trabajo del equipo frontend y contiene el alcance necesario para comenzar la implementación.
 
 ## Contexto en una frase
 
@@ -8,8 +8,23 @@ Kuska recibe fotos/video/texto/GPS de un reporte ciudadano post-sismo, el backen
 
 ## Equipo frontend (2 personas)
 
-- **Frontend A — App móvil**: captura de foto/video/texto/GPS, almacenamiento local, cola de sincronización offline-first.
-- **Frontend B — Dashboard web**: mapa de incidentes, lista priorizada, vista de detalle con evidencia y explicación de Gemma.
+- **Saul — Aplicación móvil** (rama `saul`): captura de foto/video/texto/GPS, persistencia local, listado de reportes y cola de sincronización offline-first.
+- **Lucas — Dashboard web** (rama `lucas`): mapa de incidentes, lista priorizada, vista de detalle, visualización de evidencia y explicación de Gemma.
+
+### División detallada
+
+| Persona | Entregables principales | Criterio de terminado |
+|---|---|---|
+| Saul | Proyecto Expo, permisos de cámara y ubicación, formulario de reporte, UUID, archivos locales, SQLite, estados pendiente/sincronizado/error, reintento y cliente de `POST /incidents` o `/sync/batch` | En modo avión se puede crear un reporte, cerrar y abrir la aplicación sin perderlo; al recuperar conexión se sincroniza sin duplicarlo |
+| Lucas | Proyecto Next.js, datos simulados, mapa Leaflet, pines por prioridad, lista ordenada, detalle del incidente, estados de carga/error y deploy en Vercel | Desde una URL pública se puede recorrer la lista, seleccionar un incidente y ver su ubicación, evidencia y resultado de Gemma |
+
+### Punto de integración entre Saul y Lucas
+
+Saul y Lucas compartirán únicamente los tipos del contrato HTTP y la URL base del backend. Cada uno mantendrá su proyecto separado (`kuska-mobile` y `kuska-dashboard`) para evitar conflictos. Lucas puede comenzar con respuestas simuladas de los endpoints `GET`; Saul puede comenzar guardando localmente y simulando la respuesta del endpoint `POST`.
+
+Saul coordinará con Daniel el envío multipart, el uso de `client_id` y la sincronización. Lucas coordinará con Daniel los endpoints de lista y detalle, y con Andre la presentación exacta de `gemma_result`.
+
+Trabajen en ramas propias y hagan integraciones pequeñas y frecuentes. Los cambios al contrato API deben acordarse entre los cuatro y actualizarse en `BACKEND.md` y `FRONTEND.md` en el mismo momento.
 
 ## Stack recomendado
 
@@ -72,7 +87,7 @@ Mientras el backend no esté listo, **no esperen** — mockeen estas respuestas 
 
 ## Checklist de instalación
 
-### Para quien haga la app móvil
+### Para Saul — app móvil
 1. **Node.js LTS** (v20+) → https://nodejs.org
 2. Instalar Expo CLI (no requiere instalación global, se usa con `npx`):
    ```bash
@@ -83,7 +98,7 @@ Mientras el backend no esté listo, **no esperen** — mockeen estas respuestas 
 3. Instalar la app **Expo Go** en tu celular (Play Store) — al correr `npx expo start` aparece un QR, lo escaneas y la app corre en tu teléfono real, en vivo.
 4. **No necesitas Android Studio** salvo que al final quieran generar un `.apk` instalable para la demo — eso se hace con `eas build` (Expo Application Services) sin instalar nada pesado localmente. Para la demo del día, correr vía Expo Go o grabar un video es suficiente y más rápido.
 
-### Para quien haga el dashboard
+### Para Lucas — dashboard
 1. **Node.js LTS** (v20+) — mismo que arriba.
 2. ```bash
    npx create-next-app@latest kuska-dashboard
@@ -96,12 +111,12 @@ Mientras el backend no esté listo, **no esperen** — mockeen estas respuestas 
 
 Trabajamos por **fases con criterio de salida**, no por bloques de reloj rígidos: si una fase se atrasa, se recorta alcance de esa fase, no se corre todo el cronograma. Las horas son referencia, no un límite duro.
 
-- **Fase 0 — Setup** (~08:30–09:00): contrato de API cerrado con backend, `npx create-expo-app` y `npx create-next-app` corriendo, celulares (Android o iPhone) con Expo Go instalado y mostrando el QR de arranque. *Salida: ambos proyectos corren localmente sin errores.*
-- **Fase 1 — UI con mocks** (~09:00–11:00): pantalla de captura (móvil) y mapa+lista (dashboard) construidos contra datos falsos, sin depender de que backend ya esté listo. *Salida: se puede navegar el flujo completo con datos de mentira.*
-- **Fase 2 — Integración real**: conectar a `POST /incidents` y `GET /incidents` reales, apenas backend los tenga corriendo (local o deployado).
-- **Fase 3 — Offline-first real**: cola local en el móvil + sync automático al recuperar conexión; dashboard con vista de detalle completa (`gemma_result`).
-- **Fase 4 — Pulido y deploy**: manejo de estados de carga/error, deploy del dashboard a Vercel (URL pública sin login), probar el flujo completo dos veces.
-- **Fase 5 — Cierre**: grabar video de respaldo de la app móvil funcionando, confirmar que los links del Writeup de Kaggle funcionan sin login, antes de las 16:30.
+- **Etapa 1 — Setup** (~08:30–09:00): contrato de API cerrado con backend, `npx create-expo-app` y `npx create-next-app` corriendo, celulares (Android o iPhone) con Expo Go instalado y mostrando el QR de arranque. *Salida: ambos proyectos corren localmente sin errores.*
+- **Etapa 2 — UI con mocks** (~09:00–11:00): pantalla de captura (móvil) y mapa+lista (dashboard) construidos contra datos falsos, sin depender de que backend ya esté listo. *Salida: se puede navegar el flujo completo con datos de mentira.*
+- **Etapa 3 — Integración real**: conectar a `POST /incidents` y `GET /incidents` reales, apenas backend los tenga corriendo (local o deployado).
+- **Etapa 4 — Offline-first real**: cola local en el móvil + sync automático al recuperar conexión; dashboard con vista de detalle completa (`gemma_result`).
+- **Etapa 5 — Pulido y deploy**: manejo de estados de carga/error, deploy del dashboard a Vercel (URL pública sin login), probar el flujo completo dos veces.
+- **Etapa 6 — Cierre**: grabar video de respaldo de la app móvil funcionando, confirmar que los links del Writeup de Kaggle funcionan sin login, antes de las 16:30.
 
 ## Notas de negocio a no perder de vista
 

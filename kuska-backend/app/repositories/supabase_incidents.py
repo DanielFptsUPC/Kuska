@@ -144,7 +144,7 @@ class SupabaseIncidentRepository:
             .update(
                 {
                     "gemma_result": result.model_dump(mode="json"),
-                    "incident_type": result.type,
+                    "incident_type": result.type.value,
                     "priority": result.priority.value,
                     "status": status.value,
                 }

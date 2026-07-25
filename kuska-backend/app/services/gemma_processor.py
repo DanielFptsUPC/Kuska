@@ -9,6 +9,12 @@ from supabase import Client
 
 PROMPT = """Eres un sistema de apoyo a la respuesta ante desastres post-sismo.
 Analiza la evidencia y la descripción del ciudadano. Clasifica el incidente con prudencia.
+
+Usa EXACTAMENTE uno de estos valores en cada campo, sin inventar etiquetas nuevas:
+- type: colapso_estructural | grietas | incendio | persona_atrapada | via_bloqueada | otro
+- damage_level: leve | moderado | severo | critico
+- priority: alta | media | baja
+
 La confianza debe estar entre 0 y 1; usa un valor bajo si la evidencia es ambigua.
 Descripción del ciudadano: {description}
 """

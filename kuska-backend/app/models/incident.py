@@ -18,9 +18,27 @@ class Priority(StrEnum):
     BAJA = "baja"
 
 
+class IncidentType(StrEnum):
+    COLAPSO_ESTRUCTURAL = "colapso_estructural"
+    GRIETAS = "grietas"
+    INCENDIO = "incendio"
+    PERSONA_ATRAPADA = "persona_atrapada"
+    VIA_BLOQUEADA = "via_bloqueada"
+    OTRO = "otro"
+
+
+class DamageLevel(StrEnum):
+    LEVE = "leve"
+    MODERADO = "moderado"
+    SEVERO = "severo"
+    CRITICO = "critico"
+
+
 class GemmaResult(BaseModel):
-    type: str
-    damage_level: str
+    # Enums, no str libre: sin esto Gemma inventa etiquetas distintas en cada llamada
+    # ("colapso de estructura", "total") y el dashboard no puede filtrar ni colorear.
+    type: IncidentType
+    damage_level: DamageLevel
     trapped_people_possible: bool
     secondary_risks: list[str] = Field(default_factory=list)
     priority: Priority

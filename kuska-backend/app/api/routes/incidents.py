@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Annotated
 from uuid import UUID
@@ -20,6 +21,8 @@ from app.services import (
     get_evidence_storage,
     get_incident_analyzer,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 Repository = Annotated[IncidentRepository, Depends(get_incident_repository)]
@@ -73,8 +76,11 @@ async def create_incident(
     lon: Annotated[float, Form(ge=-180, le=180)],
     client_id: Annotated[UUID, Form()],
     created_at_client: Annotated[datetime, Form()],
-    video: Annotated[UploadFile | None, File()] = None,
+    video: Annotated[UploadFile | str | None, File()] = None,
 ) -> IncidentAccepted:
+    # Swagger UI envía "" cuando "Send empty value" queda marcado en un archivo opcional.
+    if isinstance(video, str):
+        video = None
     if not photos:
         raise HTTPException(status_code=422, detail="Se requiere al menos una fotografía")
     if len(photos) > 5:
@@ -120,6 +126,7 @@ async def create_incident(
             )
             incident = repository.save_analysis(incident.id, result, analysis_status)
         except Exception:
+            logger.exception("Fallo el analisis del incidente %s", incident.id)
             incident = repository.mark_processing_failed(incident.id)
     return IncidentAccepted(
         incident_id=incident.id,

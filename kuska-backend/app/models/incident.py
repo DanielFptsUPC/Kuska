@@ -82,6 +82,7 @@ class SyncResult(IncidentAccepted):
 class IncidentListItem(BaseModel):
     id: UUID
     client_id: UUID
+    description: str
     lat: float
     lon: float
     priority: Priority | None = None

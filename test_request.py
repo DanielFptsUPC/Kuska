@@ -10,7 +10,7 @@ photo_path = sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\LENOVO\Downloads\t
 with open(photo_path, "rb") as f:
     response = requests.post(
         f"{BASE}/incidents",
-        files=[("photos[]", (photo_path, f, "image/jpeg"))],
+        files=[("photos", (photo_path, f, "image/jpeg"))],
         data={
             "description": "casa derrumbada por el sismo, hay escombros",
             "lat": -12.05,

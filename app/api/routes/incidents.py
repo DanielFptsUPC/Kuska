@@ -70,7 +70,7 @@ async def create_incident(
     repository: Repository,
     analyzer: Analyzer,
     storage: Storage,
-    photos: Annotated[list[UploadFile], File(alias="photos[]")],
+    photos: Annotated[list[UploadFile], File()],
     description: Annotated[str, Form(min_length=10, max_length=2_000)],
     lat: Annotated[float, Form(ge=-90, le=90)],
     lon: Annotated[float, Form(ge=-180, le=180)],

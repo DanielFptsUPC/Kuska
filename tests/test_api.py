@@ -55,7 +55,7 @@ def incident_form(**overrides: str) -> dict[str, str]:
 
 
 def photo_files() -> list[tuple[str, tuple[str, bytes, str]]]:
-    return [("photos[]", ("evidence.jpg", b"image-content", "image/jpeg"))]
+    return [("photos", ("evidence.jpg", b"image-content", "image/jpeg"))]
 
 
 def create_incident(client: TestClient, **overrides: str):

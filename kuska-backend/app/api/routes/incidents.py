@@ -1,10 +1,20 @@
+import asyncio
 from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 
-from app.config import get_settings
 from app.models import (
     IncidentAccepted,
     IncidentCreate,
@@ -19,6 +29,7 @@ from app.services import (
     IncidentAnalyzer,
     get_evidence_storage,
     get_incident_analyzer,
+    process_incident_analysis,
 )
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
@@ -67,6 +78,7 @@ async def create_incident(
     repository: Repository,
     analyzer: Analyzer,
     storage: Storage,
+    background_tasks: BackgroundTasks,
     photos: Annotated[list[UploadFile], File()],
     description: Annotated[str, Form(min_length=10, max_length=2_000)],
     lat: Annotated[float, Form(ge=-90, le=90)],
@@ -90,7 +102,7 @@ async def create_incident(
         client_id=client_id,
         created_at_client=created_at_client,
     )
-    existing = repository.get_by_client_id(client_id)
+    existing = await asyncio.to_thread(repository.get_by_client_id, client_id)
     if existing is not None:
         return IncidentAccepted(
             incident_id=existing.id,
@@ -105,26 +117,25 @@ async def create_incident(
         stored_video = await storage.upload(client_id, video, "video") if video else None
         if stored_video:
             uploaded_paths.append(stored_video.path)
-        incident, created = repository.create(
+        incident, created = await asyncio.to_thread(
+            repository.create,
             payload,
             [item.path for item in stored_photos],
             stored_video.path if stored_video else None,
         )
     except Exception:
-        storage.remove(uploaded_paths)
+        await asyncio.to_thread(storage.remove, uploaded_paths)
         raise
 
     if created:
-        try:
-            result = await analyzer(uploaded_paths, description)
-            analysis_status = (
-                IncidentStatus.NEEDS_REVIEW
-                if result.confidence < get_settings().gemini_review_threshold
-                else IncidentStatus.VALIDATED
-            )
-            incident = repository.save_analysis(incident.id, result, analysis_status)
-        except Exception:
-            incident = repository.mark_processing_failed(incident.id)
+        background_tasks.add_task(
+            process_incident_analysis,
+            repository,
+            analyzer,
+            incident.id,
+            uploaded_paths,
+            description,
+        )
     return IncidentAccepted(
         incident_id=incident.id,
         client_id=incident.client_id,
@@ -139,7 +150,7 @@ async def list_incidents(
     priority: Priority | None = None,
     bbox: str | None = None,
 ) -> list[IncidentListItem]:
-    incidents = repository.list(incident_status)
+    incidents = await asyncio.to_thread(repository.list, incident_status)
     if priority is not None:
         incidents = [item for item in incidents if item.priority == priority]
     if bbox is not None:
@@ -154,7 +165,7 @@ async def list_incidents(
 
 @router.get("/{incident_id}", response_model=IncidentDetail)
 async def get_incident(incident_id: UUID, repository: Repository) -> IncidentDetail:
-    incident = repository.get(incident_id)
+    incident = await asyncio.to_thread(repository.get, incident_id)
     if incident is None:
         raise HTTPException(status_code=404, detail="Incidente no encontrado")
     return incident

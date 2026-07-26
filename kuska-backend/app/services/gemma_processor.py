@@ -1,3 +1,4 @@
+import asyncio
 import mimetypes
 
 import httpx
@@ -37,7 +38,7 @@ class GemmaIncidentAnalyzer:
                 mime_type = response.headers.get("content-type", "application/octet-stream")
                 return response.content, mime_type.split(";", 1)[0]
 
-        content = self._bucket.download(reference)
+        content = await asyncio.to_thread(self._bucket.download, reference)
         mime_type = mimetypes.guess_type(reference)[0] or "application/octet-stream"
         return content, mime_type
 

@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Protocol
@@ -80,7 +81,12 @@ class SupabaseEvidenceStorage:
 
         suffix = EXTENSIONS_BY_CONTENT_TYPE[content_type]
         path = f"{client_id}/{media_type}/{uuid4()}{suffix}"
-        self._bucket.upload(path, content, {"content-type": content_type, "upsert": "false"})
+        await asyncio.to_thread(
+            self._bucket.upload,
+            path,
+            content,
+            {"content-type": content_type, "upsert": "false"},
+        )
         return StoredEvidence(path=path, content_type=content_type, size_bytes=len(content))
 
     def remove(self, paths: list[str]) -> None:

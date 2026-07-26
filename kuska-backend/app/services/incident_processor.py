@@ -1,12 +1,37 @@
+import asyncio
+import logging
 from collections.abc import Awaitable, Callable
 from functools import lru_cache
 
 from app.config import get_settings
-from app.models import GemmaResult, Priority
+from app.models import GemmaResult, IncidentStatus, Priority
+from app.repositories import IncidentRepository
 from app.services.gemma_processor import GemmaIncidentAnalyzer
 from supabase import create_client
 
 IncidentAnalyzer = Callable[[list[str], str], Awaitable[GemmaResult]]
+logger = logging.getLogger(__name__)
+
+
+async def process_incident_analysis(
+    repository: IncidentRepository,
+    analyzer: IncidentAnalyzer,
+    incident_id,
+    media_paths: list[str],
+    description: str,
+) -> None:
+    """Procesa Gemma después de responder al cliente y persiste el resultado."""
+    try:
+        result = await analyzer(media_paths, description)
+        analysis_status = (
+            IncidentStatus.NEEDS_REVIEW
+            if result.confidence < get_settings().gemini_review_threshold
+            else IncidentStatus.VALIDATED
+        )
+        await asyncio.to_thread(repository.save_analysis, incident_id, result, analysis_status)
+    except Exception:
+        logger.exception("No se pudo analizar el incidente %s", incident_id)
+        await asyncio.to_thread(repository.mark_processing_failed, incident_id)
 
 
 async def analyze_incident(media_paths: list[str], description: str) -> GemmaResult:

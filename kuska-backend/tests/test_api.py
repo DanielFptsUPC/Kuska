@@ -93,7 +93,7 @@ def test_create_incident_accepts_multipart(client: TestClient) -> None:
 
     assert response.status_code == 201
     assert response.json()["client_id"] == client_id
-    assert response.json()["status"] == "validated"
+    assert response.json()["status"] == "processing"
     UUID(response.json()["incident_id"])
 
 
@@ -268,7 +268,7 @@ def test_simulated_processor_classifies_incident(client: TestClient) -> None:
     )
     detail = client.get(f"/incidents/{created.json()['incident_id']}")
 
-    assert created.json()["status"] == "validated"
+    assert created.json()["status"] == "processing"
     assert detail.json()["type"] == "persona_atrapada"
     assert detail.json()["priority"] == "alta"
     assert detail.json()["gemma_result"] == {
@@ -318,7 +318,7 @@ def test_processor_failure_marks_incident_as_failed(client: TestClient) -> None:
     detail = client.get(f"/incidents/{created.json()['incident_id']}")
 
     assert created.status_code == 201
-    assert created.json()["status"] == "processing_failed"
+    assert created.json()["status"] == "processing"
     assert detail.json()["status"] == "processing_failed"
     assert detail.json()["gemma_result"] is None
 
@@ -340,7 +340,7 @@ def test_low_confidence_result_requires_review(client: TestClient) -> None:
     created = create_incident(client)
     detail = client.get(f"/incidents/{created.json()['incident_id']}")
 
-    assert created.json()["status"] == "needs_review"
+    assert created.json()["status"] == "processing"
     assert detail.json()["status"] == "needs_review"
     assert detail.json()["gemma_result"]["confidence"] == 0.25
 
@@ -366,7 +366,7 @@ def test_batch_processes_only_new_incidents(client: TestClient) -> None:
     first = client.post("/sync/batch", json=payload)
     second = client.post("/sync/batch", json=payload)
 
-    assert first.json()[0]["status"] == "validated"
+    assert first.json()[0]["status"] == "processing"
     assert second.json()[0]["created"] is False
     assert calls == 1
 

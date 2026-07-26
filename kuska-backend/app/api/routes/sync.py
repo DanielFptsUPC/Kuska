@@ -1,11 +1,11 @@
+import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 
-from app.config import get_settings
-from app.models import BatchSyncRequest, IncidentStatus, SyncResult
+from app.models import BatchSyncRequest, SyncResult
 from app.repositories import IncidentRepository, get_incident_repository
-from app.services import IncidentAnalyzer, get_incident_analyzer
+from app.services import IncidentAnalyzer, get_incident_analyzer, process_incident_analysis
 
 router = APIRouter(prefix="/sync", tags=["sync"])
 Repository = Annotated[IncidentRepository, Depends(get_incident_repository)]
@@ -17,22 +17,21 @@ async def sync_batch(
     payload: BatchSyncRequest,
     repository: Repository,
     analyzer: Analyzer,
+    background_tasks: BackgroundTasks,
 ) -> list[SyncResult]:
     results: list[SyncResult] = []
     for item in payload.incidents:
-        incident, created = repository.create_from_batch(item)
+        incident, created = await asyncio.to_thread(repository.create_from_batch, item)
         if created:
             media_paths = [*item.photo_urls, *([item.video_url] if item.video_url else [])]
-            try:
-                result = await analyzer(media_paths, item.description)
-                analysis_status = (
-                    IncidentStatus.NEEDS_REVIEW
-                    if result.confidence < get_settings().gemini_review_threshold
-                    else IncidentStatus.VALIDATED
-                )
-                incident = repository.save_analysis(incident.id, result, analysis_status)
-            except Exception:
-                incident = repository.mark_processing_failed(incident.id)
+            background_tasks.add_task(
+                process_incident_analysis,
+                repository,
+                analyzer,
+                incident.id,
+                media_paths,
+                item.description,
+            )
         results.append(
             SyncResult(
                 incident_id=incident.id,

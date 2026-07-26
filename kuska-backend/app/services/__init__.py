@@ -7,6 +7,7 @@ from app.services.incident_processor import (
     IncidentAnalyzer,
     analyze_incident,
     get_incident_analyzer,
+    process_incident_analysis,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "analyze_incident",
     "get_evidence_storage",
     "get_incident_analyzer",
+    "process_incident_analysis",
 ]
